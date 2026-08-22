@@ -1,0 +1,81 @@
+{
+  "users": [
+    {
+      "id": "b9b61e42-e34a-4388-8a6e-9215c8037804",
+      "username": "Jacob aiden",
+      "passwordHash": "$2a$10$Bk0Gh/vdNAEXJKpHlkvYheB27Es1kFCIgBmA2CvvTTD8ftggAHkyi",
+      "color": "#777777",
+      "createdAt": 1787416397661,
+      "avatarUrl": "/uploads/b9b61e42-e34a-4388-8a6e-9215c8037804-1787416464774.jpeg"
+    }
+  ],
+  "servers": [
+    {
+      "id": "409909bf-8d41-4ff4-9e3f-bb34c34c6aa3",
+      "name": "awdwas",
+      "ownerId": "b9b61e42-e34a-4388-8a6e-9215c8037804",
+      "inviteCode": "DUB1K0",
+      "memberIds": [
+        "b9b61e42-e34a-4388-8a6e-9215c8037804"
+      ],
+      "channels": [
+        {
+          "id": "319a0ea4-e520-42ae-8f46-c7efc692a2d2",
+          "name": "geral",
+          "type": "text"
+        },
+        {
+          "id": "9f9c34df-dcaf-423e-9060-f60a04d3e62e",
+          "name": "Sala de voz",
+          "type": "voice"
+        }
+      ]
+    }
+  ],
+  "messages": [
+    {
+      "id": "2a56183b-9dfd-4dea-87ef-7db4ceefa6d9",
+      "scope": "channel",
+      "targetId": "319a0ea4-e520-42ae-8f46-c7efc692a2d2",
+      "authorId": "b9b61e42-e34a-4388-8a6e-9215c8037804",
+      "content": "alo",
+      "createdAt": 1787416454656,
+      "replyTo": null,
+      "replyPreview": null
+    },
+    {
+      "id": "7035920a-3ac0-4488-b4e9-2dc6273336a3",
+      "scope": "channel",
+      "targetId": "319a0ea4-e520-42ae-8f46-c7efc692a2d2",
+      "authorId": "b9b61e42-e34a-4388-8a6e-9215c8037804",
+      "content": "dsawkdsa",
+      "createdAt": 1787416458760,
+      "replyTo": "2a56183b-9dfd-4dea-87ef-7db4ceefa6d9",
+      "replyPreview": {
+        "messageId": "2a56183b-9dfd-4dea-87ef-7db4ceefa6d9",
+        "authorUsername": "Jacob aiden",
+        "content": "alo"
+      }
+    },
+    {
+      "id": "bacf40b9-4413-4989-b65c-f2421b2c8198",
+      "scope": "channel",
+      "targetId": "319a0ea4-e520-42ae-8f46-c7efc692a2d2",
+      "authorId": "b9b61e42-e34a-4388-8a6e-9215c8037804",
+      "content": "dsa",
+      "createdAt": 1787416475974,
+      "replyTo": null,
+      "replyPreview": null
+    },
+    {
+      "id": "61b9d7fa-9a20-4e7e-8263-e5b6227ed755",
+      "scope": "channel",
+      "targetId": "319a0ea4-e520-42ae-8f46-c7efc692a2d2",
+      "authorId": "b9b61e42-e34a-4388-8a6e-9215c8037804",
+      "content": "]dsawds",
+      "createdAt": 1787416477707,
+      "replyTo": null,
+      "replyPreview": null
+    }
+  ]
+}
