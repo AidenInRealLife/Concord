@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const path = require('path');
+const fs = require('fs');
 const { v4: uuid } = require('uuid');
 const { Server } = require('socket.io');
 
@@ -17,16 +18,35 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const AVATAR_COLORS = ['#7c5cff', '#3ddc97', '#ff8a5c', '#5b8def', '#ff5c8a', '#ffd15c'];
+// Paleta em tons de cinza usada quando o usuário não tem foto de perfil
+const AVATAR_SHADES = ['#3a3a3a', '#454545', '#525252', '#5e5e5e', '#6b6b6b', '#777777'];
 function randomColor() {
-  return AVATAR_COLORS[Math.floor(Math.random() * AVATAR_COLORS.length)];
+  return AVATAR_SHADES[Math.floor(Math.random() * AVATAR_SHADES.length)];
 }
 function inviteCode() {
   return Math.random().toString(36).slice(2, 8).toUpperCase();
 }
 function publicUser(u) {
   if (!u) return null;
-  return { id: u.id, username: u.username, color: u.color };
+  return { id: u.id, username: u.username, color: u.color, avatarUrl: u.avatarUrl || null };
+}
+
+const UPLOADS_DIR = path.join(__dirname, 'public', 'uploads');
+function ensureUploadsDir() {
+  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
+// Monta uma prévia curta de uma mensagem original, usada na função "responder"
+function buildReplyPreview(db, replyToId) {
+  if (!replyToId) return null;
+  const original = db.messages.find(m => m.id === replyToId);
+  if (!original) return null;
+  const author = db.users.find(u => u.id === original.authorId);
+  return {
+    messageId: original.id,
+    authorUsername: author ? author.username : 'desconhecido',
+    content: original.content.length > 120 ? original.content.slice(0, 120) + '…' : original.content,
+  };
 }
 
 // ---------- AUTH ----------
@@ -72,6 +92,38 @@ app.get('/api/me', requireAuth, (req, res) => {
   const user = db.users.find(u => u.id === req.user.id);
   if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
   res.json({ user: publicUser(user) });
+});
+
+// Upload de foto de perfil. Recebe uma imagem em base64 (o cliente já
+// redimensiona antes de enviar), salva em disco e associa ao usuário.
+app.post('/api/me/avatar', requireAuth, async (req, res) => {
+  const { image } = req.body || {};
+  if (!image || typeof image !== 'string') return res.status(400).json({ error: 'Nenhuma imagem enviada' });
+
+  const match = image.match(/^data:image\/(png|jpe?g|webp);base64,([a-zA-Z0-9+/=]+)$/);
+  if (!match) return res.status(400).json({ error: 'Formato de imagem inválido. Use PNG, JPG ou WEBP.' });
+
+  const ext = match[1] === 'jpg' ? 'jpeg' : match[1];
+  const buffer = Buffer.from(match[2], 'base64');
+  if (buffer.length > 3 * 1024 * 1024) return res.status(400).json({ error: 'Imagem muito grande (máximo 3MB)' });
+
+  ensureUploadsDir();
+  const db = readDB();
+  const user = db.users.find(u => u.id === req.user.id);
+  if (!user) return res.status(404).json({ error: 'Usuário não encontrado' });
+
+  // remove avatar antigo, se houver
+  if (user.avatarUrl) {
+    const oldPath = path.join(__dirname, 'public', user.avatarUrl);
+    fs.existsSync(oldPath) && fs.unlink(oldPath, () => {});
+  }
+
+  const filename = `${user.id}-${Date.now()}.${ext}`;
+  fs.writeFileSync(path.join(UPLOADS_DIR, filename), buffer);
+  user.avatarUrl = `/uploads/${filename}`;
+  await writeDB(db);
+
+  res.json({ avatarUrl: user.avatarUrl });
 });
 
 // ---------- SERVERS (guilds) ----------
@@ -152,6 +204,17 @@ app.get('/api/channels/:channelId/messages', requireAuth, (req, res) => {
   res.json({ messages: msgs });
 });
 
+app.get('/api/servers/:serverId/voice/:channelId/state', requireAuth, (req, res) => {
+  const room = io.sockets.adapter.rooms.get('voice:' + req.params.channelId) || new Set();
+  const db = readDB();
+  const participants = [...room].map(sid => {
+    const s = io.sockets.sockets.get(sid);
+    if (!s) return null;
+    return publicUser(db.users.find(u => u.id === s.userId));
+  }).filter(Boolean);
+  res.json({ participants });
+});
+
 app.get('/api/dm/:userId/messages', requireAuth, (req, res) => {
   const db = readDB();
   const dmId = [req.user.id, req.params.userId].sort().join(':');
@@ -161,6 +224,8 @@ app.get('/api/dm/:userId/messages', requireAuth, (req, res) => {
     .map(m => ({ ...m, author: publicUser(db.users.find(u => u.id === m.authorId)) }));
   res.json({ messages: msgs });
 });
+
+
 
 app.get('/api/users/search', requireAuth, (req, res) => {
   const q = (req.query.q || '').toLowerCase();
@@ -208,7 +273,7 @@ io.on('connection', (socket) => {
     socket.leave('channel:' + channelId);
   });
 
-  socket.on('channel:message', async ({ channelId, content }) => {
+  socket.on('channel:message', async ({ channelId, content, replyTo }) => {
     if (!content || !content.trim()) return;
     const dbNow = readDB();
     const srv = dbNow.servers.find(s => s.channels.some(c => c.id === channelId));
@@ -221,6 +286,8 @@ io.on('connection', (socket) => {
       authorId: socket.userId,
       content: content.trim().slice(0, 4000),
       createdAt: Date.now(),
+      replyTo: replyTo || null,
+      replyPreview: buildReplyPreview(dbNow, replyTo),
     };
     dbNow.messages.push(msg);
     await writeDB(dbNow);
@@ -228,9 +295,10 @@ io.on('connection', (socket) => {
     io.to('channel:' + channelId).emit('channel:message', { ...msg, author: publicUser(user) });
   });
 
-  socket.on('dm:message', async ({ toUserId, content }) => {
+  socket.on('dm:message', async ({ toUserId, content, replyTo }) => {
     if (!content || !content.trim() || !toUserId) return;
     const dmId = [socket.userId, toUserId].sort().join(':');
+    const dbNow = readDB();
     const msg = {
       id: uuid(),
       scope: 'dm',
@@ -238,8 +306,9 @@ io.on('connection', (socket) => {
       authorId: socket.userId,
       content: content.trim().slice(0, 4000),
       createdAt: Date.now(),
+      replyTo: replyTo || null,
+      replyPreview: buildReplyPreview(dbNow, replyTo),
     };
-    const dbNow = readDB();
     dbNow.messages.push(msg);
     await writeDB(dbNow);
 
@@ -253,12 +322,16 @@ io.on('connection', (socket) => {
     socket.join('voice:' + channelId);
     socket.voiceChannel = channelId;
     const room = io.sockets.adapter.rooms.get('voice:' + channelId) || new Set();
+    const dbNow = readDB();
     const peers = [...room].filter(id => id !== socket.id).map(id => {
       const s = io.sockets.sockets.get(id);
-      return { socketId: id, userId: s?.userId, username: s?.username };
+      const u = dbNow.users.find(x => x.id === s?.userId);
+      return { socketId: id, userId: s?.userId, username: s?.username, color: u?.color, avatarUrl: u?.avatarUrl || null };
     });
     socket.emit('voice:peers', peers);
-    socket.to('voice:' + channelId).emit('voice:peer-joined', { socketId: socket.id, userId: socket.userId, username: socket.username });
+    socket.to('voice:' + channelId).emit('voice:peer-joined', {
+      socketId: socket.id, userId: socket.userId, username: socket.username, color: user.color, avatarUrl: user.avatarUrl || null,
+    });
   });
 
   socket.on('voice:leave', (channelId) => {
