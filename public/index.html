@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Concord — chat para o squad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- TELA DE LOGIN -->
+  <div id="authScreen" class="auth-screen">
+    <div class="auth-card">
+      <div class="auth-logo">
+        <span class="logo-mark">◇</span>
+        <span class="logo-text">Concord</span>
+      </div>
+      <p class="auth-sub">O ponto de encontro do seu squad.</p>
+
+      <div class="auth-tabs">
+        <button class="auth-tab active" data-tab="login">Entrar</button>
+        <button class="auth-tab" data-tab="register">Criar conta</button>
+      </div>
+
+      <form id="loginForm" class="auth-form">
+        <input type="text" id="loginUsername" placeholder="Usuário" autocomplete="username" required />
+        <input type="password" id="loginPassword" placeholder="Senha" autocomplete="current-password" required />
+        <button type="submit" class="btn-primary">Entrar</button>
+      </form>
+
+      <form id="registerForm" class="auth-form hidden">
+        <input type="text" id="registerUsername" placeholder="Escolha um usuário" autocomplete="username" required />
+        <input type="password" id="registerPassword" placeholder="Escolha uma senha" autocomplete="new-password" required />
+        <button type="submit" class="btn-primary">Criar conta</button>
+      </form>
+
+      <p id="authError" class="auth-error hidden"></p>
+    </div>
+  </div>
+
+  <!-- APP PRINCIPAL -->
+  <div id="app" class="app hidden">
+
+    <!-- Coluna de servidores -->
+    <nav class="server-rail">
+      <button id="dmRailBtn" class="server-icon active" title="Mensagens diretas">✉</button>
+      <div class="rail-divider"></div>
+      <div id="serverList" class="server-list"></div>
+      <button id="addServerBtn" class="server-icon add" title="Adicionar / criar servidor">+</button>
+      <div class="rail-divider"></div>
+      <button id="backgroundBtn" class="server-icon" title="Plano de fundo">🎨</button>
+    </nav>
+
+    <!-- Coluna de canais / DMs -->
+    <aside class="side-panel">
+      <div class="side-header">
+        <span id="sideTitle">Mensagens diretas</span>
+      </div>
+
+      <div id="dmPanel" class="side-content">
+        <div class="side-section-label">
+          <span>Conversas</span>
+          <button id="newDmBtn" class="mini-btn" title="Nova mensagem">+</button>
+        </div>
+        <div id="dmList" class="channel-list"></div>
+      </div>
+
+      <div id="channelPanel" class="side-content hidden">
+        <div class="side-section-label">
+          <span id="channelSectionLabel">Canais de texto</span>
+          <button id="addChannelBtn" class="mini-btn" title="Criar canal">+</button>
+        </div>
+        <div id="textChannelList" class="channel-list"></div>
+        <div class="side-section-label">
+          <span>Canais de voz</span>
+        </div>
+        <div id="voiceChannelList" class="channel-list"></div>
+      </div>
+
+      <div class="user-footer">
+        <button id="myAvatarBtn" class="avatar-btn" title="Trocar foto de perfil">
+          <span id="myAvatar" class="avatar"></span>
+          <span class="avatar-edit-badge">✎</span>
+        </button>
+        <input type="file" id="avatarFileInput" accept="image/png,image/jpeg,image/webp" class="hidden" />
+        <div class="user-footer-info">
+          <span id="myUsername"></span>
+          <span class="user-footer-tag">online</span>
+        </div>
+        <button id="logoutBtn" class="mini-btn" title="Sair">⏻</button>
+      </div>
+    </aside>
+
+    <!-- Área principal de chat -->
+    <main class="main-panel">
+      <header class="chat-header">
+        <span id="chatHeaderIcon">#</span>
+        <span id="chatHeaderTitle">Selecione uma conversa</span>
+      </header>
+
+      <div id="voicePanel" class="voice-panel hidden">
+        <div class="voice-panel-top">
+          <span id="voiceBarLabel">Conectado à voz</span>
+          <div class="voice-panel-actions">
+            <select id="micSelect" class="mic-select" title="Escolher microfone"></select>
+            <button id="muteBtn" class="btn-outline-small" title="Mutar/desmutar microfone">🎙 Mutar</button>
+            <div class="screenshare-control">
+              <select id="screenShareQuality" title="Qualidade da transmissão">
+                <option value="high">Alta — 1080p 60fps</option>
+                <option value="medium" selected>Média — 720p 30fps</option>
+                <option value="low">Mínima — 480p 15fps</option>
+              </select>
+              <label class="noise-toggle">
+                <input type="checkbox" id="shareAudioToggle" />
+                + áudio da tela
+              </label>
+              <button id="shareScreenBtn" class="btn-outline-small">Compartilhar tela</button>
+              <button id="stopShareScreenBtn" class="btn-outline-small hidden">Parar compartilhamento</button>
+            </div>
+            <label class="noise-toggle">
+              <input type="checkbox" id="noiseSuppressionToggle" checked />
+              Supressão de ruído
+            </label>
+            <button id="leaveVoiceBtn" class="btn-danger-small">Sair da voz</button>
+          </div>
+        </div>
+        <div id="voiceGrid" class="voice-grid"></div>
+        <div id="screenShareStage" class="screenshare-stage hidden">
+          <video id="screenShareVideo" autoplay playsinline muted></video>
+          <span id="screenShareLabel" class="screenshare-label"></span>
+        </div>
+      </div>
+
+      <div id="messages" class="messages"></div>
+
+      <div id="replyPreviewBar" class="reply-preview-bar hidden">
+        <div class="reply-preview-content">
+          <span class="reply-preview-label">Respondendo a <b id="replyPreviewAuthor"></b></span>
+          <span id="replyPreviewText" class="reply-preview-text"></span>
+        </div>
+        <button id="cancelReplyBtn" class="mini-btn" title="Cancelar resposta">✕</button>
+      </div>
+
+      <form id="messageForm" class="message-form hidden">
+        <input type="text" id="messageInput" placeholder="Enviar mensagem…" autocomplete="off" />
+        <button type="submit" class="btn-send">Enviar</button>
+      </form>
+    </main>
+
+    <!-- Painel de membros -->
+    <aside id="membersPanel" class="members-panel hidden">
+      <div class="side-section-label"><span>Membros</span></div>
+      <div id="membersList" class="channel-list"></div>
+    </aside>
+  </div>
+
+  <!-- Modal: criar/entrar em servidor -->
+  <div id="serverModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Servidores</h3>
+      <div class="modal-tabs">
+        <button class="modal-tab active" data-mtab="create">Criar servidor</button>
+        <button class="modal-tab" data-mtab="join">Entrar com convite</button>
+      </div>
+      <div id="createServerTab" class="modal-tab-content">
+        <input type="text" id="newServerName" placeholder="Nome do servidor" />
+        <button id="createServerBtn" class="btn-primary">Criar</button>
+      </div>
+      <div id="joinServerTab" class="modal-tab-content hidden">
+        <input type="text" id="joinServerCode" placeholder="Código de convite" />
+        <button id="joinServerBtn" class="btn-primary">Entrar</button>
+      </div>
+      <p id="serverModalError" class="auth-error hidden"></p>
+      <button class="modal-close" id="closeServerModal">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Modal: criar canal -->
+  <div id="channelModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Criar canal</h3>
+      <input type="text" id="newChannelName" placeholder="Nome do canal" />
+      <div class="channel-type-choice">
+        <label><input type="radio" name="chType" value="text" checked /> Texto</label>
+        <label><input type="radio" name="chType" value="voice" /> Voz</label>
+      </div>
+      <button id="createChannelBtn" class="btn-primary">Criar canal</button>
+      <button class="modal-close" id="closeChannelModal">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Modal: nova DM -->
+  <div id="dmModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Nova mensagem</h3>
+      <input type="text" id="dmSearchInput" placeholder="Buscar usuário…" />
+      <div id="dmSearchResults" class="channel-list"></div>
+      <button class="modal-close" id="closeDmModal">Fechar</button>
+    </div>
+  </div>
+
+  <!-- Convite gerado -->
+  <div id="inviteModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Convide seus amigos</h3>
+      <p>Compartilhe este código para outros entrarem no servidor:</p>
+      <div class="invite-code" id="inviteCodeDisplay"></div>
+      <button class="modal-close" id="closeInviteModal">Fechar</button>
+    </div>
+  </div>
+
+  <audio id="remoteAudioContainer" style="display:none"></audio>
+
+  <!-- Modal: plano de fundo -->
+  <div id="backgroundModal" class="modal hidden">
+    <div class="modal-card">
+      <h3>Plano de fundo</h3>
+      <div id="bgPresetGrid" class="bg-preset-grid">
+        <button class="bg-preset" data-bg="none" title="Padrão (nenhum)"><span class="bg-swatch bg-swatch-none"></span>Padrão</button>
+        <button class="bg-preset" data-bg="forest" title="Floresta"><span class="bg-swatch bg-swatch-forest"></span>Floresta</button>
+        <button class="bg-preset" data-bg="ocean" title="Oceano"><span class="bg-swatch bg-swatch-ocean"></span>Oceano</button>
+        <button class="bg-preset" data-bg="night" title="Céu noturno"><span class="bg-swatch bg-swatch-night"></span>Céu noturno</button>
+        <button class="bg-preset" data-bg="sunset" title="Pôr do sol"><span class="bg-swatch bg-swatch-sunset"></span>Pôr do sol</button>
+        <button class="bg-preset" data-bg="mono" title="Grafite"><span class="bg-swatch bg-swatch-mono"></span>Grafite</button>
+      </div>
+      <button class="modal-close" id="closeBackgroundModal">Fechar</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
